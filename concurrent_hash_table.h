@@ -135,9 +135,9 @@ bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::insert(
   if (buckets.empty() ||
       double(num_elements + 1) / buckets.size() > max_load_factor) {
     // We need to rebucket.
-    // How many buckets do we want? At least as many as is needed for
-    // satisfy the `max_load_factor`, but also enough that amortized
-    // insertions are constant-time.
+    // How many buckets do we want? At least as many as is needed to satisfy
+    // the `max_load_factor`, but also enough that amortized insertions are
+    // constant-time.
     constexpr auto desired_growth_factor = 1.5;
     // TODO: Show the algebra for `min_growth_factor`.
     const double min_growth_factor =
