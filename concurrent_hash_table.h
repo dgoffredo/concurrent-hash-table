@@ -100,7 +100,7 @@ bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::insert(Key key,
 template <typename Key, typename Mapped, typename Hash, typename Equal>
 Mapped* ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::lookup(
     std::size_t hash, const Key& key) {
-  // Note: Our caller is holding a reader lock on `mutex`.
+  // Note: Our caller is holding a reader or a writer lock on `mutex`.
   if (buckets.empty()) {
     return nullptr;
   }
@@ -119,7 +119,7 @@ Mapped* ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::lookup(
 template <typename Key, typename Mapped, typename Hash, typename Equal>
 const Mapped* ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::lookup(
     std::size_t hash, const Key& key) const {
-  // Note: Our caller is holding a reader lock on `mutex`.
+  // Note: Our caller is holding a reader or a writer lock on `mutex`.
   return const_cast<Shard*>(this)->lookup(hash, key);
 }
 
