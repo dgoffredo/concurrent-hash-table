@@ -150,10 +150,9 @@ bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::insert(std::size_t ha
         // Rebucket every element.
         for (auto& bucket : buckets) {
             while (!bucket.empty()) {
-                auto from = bucket.begin();
-                const std::size_t hash = Hash{}(from->first);
+                const std::size_t hash = Hash{}(bucket.begin()->first);
                 auto& new_bucket = new_buckets[hash % new_buckets.size()];
-                new_bucket.splice_after(new_bucket.before_begin(), bucket, from);
+                new_bucket.splice_after(new_bucket.before_begin(), bucket, bucket.before_begin());
             }
         }
 
@@ -163,5 +162,6 @@ bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::insert(std::size_t ha
     // Insert the new element.
     auto& bucket = buckets[hash % buckets.size()];
     bucket.emplace_front(std::move(key), std::move(value));
+    ++num_elements;
     return true;
 }

@@ -3,5 +3,4 @@
 
 # stuff from my benchmarking
 /stop
-/times
-/times.*
+/times*
