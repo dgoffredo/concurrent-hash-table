@@ -106,9 +106,9 @@ Mapped* ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::lookup(
   }
 
   auto& bucket = buckets[hash % buckets.size()];
-  auto found =
-      std::find_if(bucket.begin(), bucket.end(),
-                   [&](const auto& entry) { return entry.first == key; });
+  auto found = std::find_if(
+      bucket.begin(), bucket.end(),
+      [&](const auto& entry) { return Equal{}(entry.first, key); });
 
   if (found == bucket.end()) {
     return nullptr;
