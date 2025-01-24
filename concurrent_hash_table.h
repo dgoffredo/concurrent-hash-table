@@ -120,17 +120,9 @@ const Mapped *ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::lookup(std::
 template <typename Key, typename Mapped, typename Hash, typename Equal>
 bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::insert(std::size_t hash, Key key, Mapped value) {
     // Note: Our caller is holding a writer lock on `mutex`.
-    if (!buckets.empty()) {
-        const auto& bucket = buckets[hash % buckets.size()];
-        const auto found = std::find_if(bucket.begin(), bucket.end(), [&](const auto& entry) {
-            return entry.first == key;
-        });
-        if (found != bucket.end()) {
-            return false;
-        }
+    if (lookup(hash, key)) {
+        return false;
     }
-
-    // `key` is not anywhere in `buckets`.
 
     // Do we need to rebucket?
     if (buckets.empty() || double(num_elements + 1) / buckets.size() > max_load_factor) {
