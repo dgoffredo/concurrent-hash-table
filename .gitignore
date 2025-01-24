@@ -1,0 +1,7 @@
+# build artifacts
+/test
+
+# stuff from my benchmarking
+/stop
+/times
+/times.*
