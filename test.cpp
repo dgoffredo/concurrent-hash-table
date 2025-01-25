@@ -1,14 +1,16 @@
-#include <atomic>
+// #include <atomic>
 #include <chrono>
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 #include <random>
 #include <string>
-#include <thread>
-#include <vector>
+// #include <thread>
+// #include <vector>
 
 #include "concurrent_hash_table.h"
 
+/*
 #ifndef BREATHING_ITERATIONS
 #define BREATHING_ITERATIONS 1000
 #endif
@@ -62,6 +64,7 @@ void test_breathing() {
 
   std::cout << "\ngoodbye\n";
 }
+*/
 
 void test_amortized_constant_lookups_one_thread() {
   ConcurrentHashTable<std::string, int> by_name;
@@ -72,7 +75,7 @@ void test_amortized_constant_lookups_one_thread() {
   long long found;
   long long not_found;
 
-  for (long long i = 0;; ++i) {
+  for (long long i = 0; !std::filesystem::exists("stop"); ++i) {
     found = not_found = 0;
     const auto before = std::chrono::steady_clock::now();
     for (int j = 0; j < 1'000; ++j) {
