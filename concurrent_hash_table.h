@@ -26,6 +26,9 @@ class ConcurrentHashTable {
 
   std::vector<Shard> shards;
 
+  Shard& hash_to_shard(std::size_t hash);
+  const Shard& hash_to_shard(std::size_t hash) const;
+
  public:
   ConcurrentHashTable();
 
@@ -49,6 +52,22 @@ inline unsigned nproc_or_default() {
 // ------------------------------
 
 template <typename Key, typename Mapped, typename Hash, typename Equal>
+ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard&
+ConcurrentHashTable<Key, Mapped, Hash, Equal>::hash_to_shard(std::size_t hash) {
+  // TODO: Is this wrong? It biases the modulo when the bucket is then selected
+  // in that shard; but, since the divisors are in general different, I don't
+  // know if it matters.
+  return shards[hash % shards.size()];
+}
+
+template <typename Key, typename Mapped, typename Hash, typename Equal>
+const ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard&
+ConcurrentHashTable<Key, Mapped, Hash, Equal>::hash_to_shard(
+    std::size_t hash) const {
+  return const_cast<ConcurrentHashTable&>(*this).hash_to_shard(hash);
+}
+
+template <typename Key, typename Mapped, typename Hash, typename Equal>
 ConcurrentHashTable<Key, Mapped, Hash, Equal>::ConcurrentHashTable()
     : shards(nproc_or_default()) {}
 
@@ -57,7 +76,7 @@ template <typename Key, typename Mapped, typename Hash, typename Equal>
 bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::lookup(
     Mapped& destination, const Key& key) const {
   const std::size_t hash = Hash{}(key);
-  const Shard& shard = shards[hash % shards.size()];
+  const Shard& shard = hash_to_shard(hash);
   std::shared_lock<std::shared_mutex> lock{shard.mutex};
   if (const Mapped* const value = shard.lookup(hash, key)) {
     destination = *value;
@@ -71,7 +90,7 @@ bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::lookup(
 template <typename Key, typename Mapped, typename Hash, typename Equal>
 Mapped* ConcurrentHashTable<Key, Mapped, Hash, Equal>::lookup(const Key& key) {
   const std::size_t hash = Hash{}(key);
-  Shard& shard = shards[hash % shards.size()];
+  Shard& shard = hash_to_shard(hash);
   std::shared_lock<std::shared_mutex> lock{shard.mutex};
   return shard.lookup(hash, key);
 }
@@ -80,7 +99,7 @@ template <typename Key, typename Mapped, typename Hash, typename Equal>
 const Mapped* ConcurrentHashTable<Key, Mapped, Hash, Equal>::lookup(
     const Key& key) const {
   const std::size_t hash = Hash{}(key);
-  const Shard& shard = shards[hash % shards.size()];
+  const Shard& shard = hash_to_shard(hash);
   std::shared_lock<std::shared_mutex> lock{shard.mutex};
   return shard.lookup(hash, key);
 }
@@ -89,7 +108,7 @@ template <typename Key, typename Mapped, typename Hash, typename Equal>
 bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::insert(Key key,
                                                            Mapped value) {
   const std::size_t hash = Hash{}(key);
-  Shard& shard = shards[hash % shards.size()];
+  Shard& shard = hash_to_shard(hash);
   std::lock_guard<std::shared_mutex> lock{shard.mutex};
   return shard.insert(hash, std::move(key), std::move(value));
 }
