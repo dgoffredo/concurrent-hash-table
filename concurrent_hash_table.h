@@ -5,14 +5,34 @@
 #include <functional>
 #include <shared_mutex>
 #include <thread>
-#include <vector>
+
+template <typename T>
+class DynArray {
+  std::unique_ptr<T[]> elements;
+  std::size_t count;
+
+ public:
+  DynArray();
+  explicit DynArray(std::size_t num_elements);
+
+  T& operator[](std::size_t index);
+  const T& operator[](std::size_t index) const;
+
+  std::size_t size() const;
+  bool empty() const;
+
+  T* begin();
+  const T* begin() const;
+  T* end();
+  const T* end() const;
+};
 
 template <typename Key, typename Mapped, typename Hash = std::hash<Key>,
           typename Equal = std::equal_to<Key>>
 class ConcurrentHashTable {
   struct Shard {
     mutable std::shared_mutex mutex;
-    std::vector<std::forward_list<std::pair<const Key, Mapped>>> buckets;
+    DynArray<std::forward_list<std::pair<const Key, Mapped>>> buckets;
     std::size_t num_elements = 0;
     // This is the maximum load factor.
     // The actual load factor is  `1.0 * num_elements / buckets.size()`.
@@ -24,7 +44,7 @@ class ConcurrentHashTable {
     bool insert(std::size_t hash, Key, Mapped);
   };
 
-  std::vector<Shard> shards;
+  DynArray<Shard> shards;
 
   Shard& hash_to_shard(std::size_t hash);
   const Shard& hash_to_shard(std::size_t hash) const;
@@ -46,6 +66,56 @@ class ConcurrentHashTable {
 inline unsigned nproc_or_default() {
   const unsigned nproc = std::thread::hardware_concurrency();
   return nproc ? nproc : 16;
+}
+
+// class DynArray<T>
+// -----------------
+
+template <typename T>
+DynArray<T>::DynArray() : count(0) {}
+
+template <typename T>
+DynArray<T>::DynArray(std::size_t num_elements)
+    : elements(new T[num_elements]), count(num_elements) {}
+
+template <typename T>
+T& DynArray<T>::operator[](std::size_t index) {
+  return elements[index];
+}
+
+template <typename T>
+const T& DynArray<T>::operator[](std::size_t index) const {
+  return elements[index];
+}
+
+template <typename T>
+std::size_t DynArray<T>::size() const {
+  return count;
+}
+
+template <typename T>
+bool DynArray<T>::empty() const {
+  return size() == 0;
+}
+
+template <typename T>
+T* DynArray<T>::begin() {
+  return elements.get();
+}
+
+template <typename T>
+const T* DynArray<T>::begin() const {
+  return elements.get();
+}
+
+template <typename T>
+T* DynArray<T>::end() {
+  return begin() + count;
+}
+
+template <typename T>
+const T* DynArray<T>::end() const {
+  return begin() + count;
 }
 
 // class ConcurrentHashTable<...>
@@ -164,10 +234,8 @@ bool ConcurrentHashTable<Key, Mapped, Hash, Equal>::Shard::insert(
     const double growth_factor =
         std::max(min_growth_factor, desired_growth_factor);
     const std::size_t min_buckets = std::ceil(1 / max_load_factor);
-    // TODO: We don't need all of `vector`'s bookkeeping. We could do with
-    // `(unique_ptr<Bucket[]>, size_t)`. Not a big deal, though.
     decltype(buckets) new_buckets(
-        buckets.empty() ? min_buckets : growth_factor * buckets.size());
+        std::max<std::size_t>(min_buckets, growth_factor * buckets.size()));
 
     // Rebucket every element.
     for (auto& bucket : buckets) {
